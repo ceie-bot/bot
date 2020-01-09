@@ -1,0 +1,1 @@
+FAV_GROUP = "10000" # \sendfavg will use it

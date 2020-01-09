@@ -1,0 +1,10 @@
+aiocqhttp
+aiofiles
+aiocqhttp
+APScheduler
+bs4
+lxml
+sqlalchemy
+telethon
+urllib3
+yaml

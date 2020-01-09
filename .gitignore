@@ -1,0 +1,13 @@
+ENV
+backup
+.env
+**/*.db
+**/*.session
+**/__pycache__
+**/test.py
+**/db_test.py
+!record/.gitkeep
+record/*
+record/.*
+.vscode
+**/config.py
