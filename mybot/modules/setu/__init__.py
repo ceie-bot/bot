@@ -80,6 +80,13 @@ class SetuBotModule(bot_module.BotModule):
             else:
                 url = setu_picurls[-1]
 
+            if not url:
+                extras["_return"] = {"reply": "不能搜我自己发的图图", "auto_escape": False}
+                return True
+
+            setu_lasttime["search"] = int(datetime.datetime.now(datetime.timezone.utc).timestamp())
+            update_vars["setu_lasttime", const.GROUP] = json.dumps(setu_lasttime)
+
             try:
                 await bot.send(context, "正在搜色图：" + url)
                 tree = lxml.html.fromstring(await util.http_get("https://ascii2d.net/search/url/" + url, proxy=priv_config.PROXY_GFW, timeout_secs=20))
@@ -105,12 +112,12 @@ class SetuBotModule(bot_module.BotModule):
                     result += "\n2. " + arr[1]
 
                 await bot.send(context, result)
-                setu_lasttime["search"] = int(datetime.datetime.now(datetime.timezone.utc).timestamp())
-                update_vars["setu_lasttime", const.GROUP] = json.dumps(setu_lasttime)
             except Exception:
                 tb = traceback.format_exc()
                 await bot.send(context, "色图搜索错误：\n" + tb)
                 await log.error("色图搜索错误在 Context " + repr(context) + "：\n" + tb)
+                setu_lasttime["search"] = 0
+                update_vars["setu_lasttime", const.GROUP] = json.dumps(setu_lasttime)
 
             return True
 
@@ -130,6 +137,10 @@ class SetuBotModule(bot_module.BotModule):
 
             try:
                 await bot.send(context, "稍等，在搞了")
+
+                setu_lasttime["fetch"] = int(datetime.datetime.now(datetime.timezone.utc).timestamp())
+                update_vars["setu_lasttime", const.GROUP] = json.dumps(setu_lasttime)
+
                 await client.connect()
                 setu_message = await client(functions.messages.GetHistoryRequest(peer=priv_config.TELEGRAM_CHANNEL_NAME, offset_id=0, offset_date=0, add_offset=index, limit=1, max_id=0, min_id=0, hash=0))
 
@@ -148,8 +159,6 @@ class SetuBotModule(bot_module.BotModule):
                     out_message = Message(media_url + "\n") + MessageSegment(type_='image', data={'file': pic_data_url})
                     await bot.send(context, out_message)
 
-                setu_lasttime["fetch"] = int(datetime.datetime.now(datetime.timezone.utc).timestamp())
-                update_vars["setu_lasttime", const.GROUP] = json.dumps(setu_lasttime)
                 setu_picurls.append("") # TODO
                 setu_picurls = setu_picurls[-10:]
                 update_vars["setu_picurls", const.GROUP] = json.dumps(setu_picurls)
@@ -157,6 +166,8 @@ class SetuBotModule(bot_module.BotModule):
                 tb = traceback.format_exc()
                 await bot.send(context, "失败了失败了失败了失败了失败了")
                 await log.error("色图获取错误在 Context " + repr(context) + "：\n" + tb)
+                setu_lasttime["fetch"] = 0
+                update_vars["setu_lasttime", const.GROUP] = json.dumps(setu_lasttime)
 
             return True
 

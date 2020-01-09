@@ -11,3 +11,4 @@ record/*
 record/.*
 .vscode
 **/config.py
+**/*.pyc

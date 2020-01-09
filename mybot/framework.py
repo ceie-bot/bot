@@ -45,6 +45,7 @@ def load_modules():
 
         default_module = copy.copy(effective_module)
         del default_module["name"]
+        default_module["prior_priority"] += 5
         default_module["state_priority"] += 5
         default_module["idle_priority"] += 5
         default_module["all_state_priority"] += 5
