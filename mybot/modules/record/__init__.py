@@ -65,7 +65,7 @@ class RecordBotModule(bot_module.BotModule):
     @classmethod
     def prior_function_list(cls, base_priority):
         return [
-            Interceptor(base_priority, cls.prior_intercept, const.TYPE_RULE_ALL, {}, {})
+            Interceptor(base_priority, cls.prior_intercept, const.TYPE_RULE_ALL, {}, {}, None)
         ]
 
 module_class = RecordBotModule

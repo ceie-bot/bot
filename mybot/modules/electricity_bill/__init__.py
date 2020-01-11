@@ -320,7 +320,7 @@ class ElectricityBillBotModule(bot_module.BotModule):
                     break
         msg = msg.strip()
         
-        if msg == "否" or "不" in msg or "别" in msg:
+        if msg == "否" or "不" in msg or "别" in msg or "no" in msg.lower():
             update_vars["state", var_scope] = "idle"
             extras["_return"] = {"reply": "未保存房间数据。现在可以使用其他命令。", "auto_escape": False}
             return True
@@ -396,6 +396,10 @@ class ElectricityBillBotModule(bot_module.BotModule):
                 return True
 
         return False
+
+    @classmethod
+    async def handle_exception(cls, e: Exception, bot, context, msg, input_vars, update_vars, extras, **kwargs):
+        await bot.send(context, "查询电费失败了：" + e.__class__.__name__)
     
     @classmethod
     def state_function_mapping(cls, base_priority):
@@ -403,20 +407,20 @@ class ElectricityBillBotModule(bot_module.BotModule):
             "beforeCampus": Interceptor(base_priority, cls.before_building, const.TYPE_RULE_MSG_ONLY, {
                 "viewStateStr": InputVarAttribute("null", const.UNKNOWN),
                 "campusList": InputVarAttribute("null", const.UNKNOWN)
-            }, {}),
+            }, {}, cls.handle_exception),
 
             "beforeBuilding": Interceptor(base_priority, cls.before_floor, const.TYPE_RULE_MSG_ONLY, {
                 "viewStateStr": InputVarAttribute("null", const.UNKNOWN),
                 "campus": InputVarAttribute("null", const.UNKNOWN),
                 "buildingList": InputVarAttribute("null", const.UNKNOWN),
-            }, {}),
+            }, {}, cls.handle_exception),
 
             "beforeFloor": Interceptor(base_priority, cls.before_room, const.TYPE_RULE_MSG_ONLY, {
                 "viewStateStr": InputVarAttribute("null", const.UNKNOWN),
                 "campus": InputVarAttribute("null", const.UNKNOWN),
                 "building": InputVarAttribute("null", const.UNKNOWN),
                 "floorList": InputVarAttribute("null", const.UNKNOWN),
-            }, {}),
+            }, {}, cls.handle_exception),
 
             "beforeRoom": Interceptor(base_priority, cls.after_room, const.TYPE_RULE_MSG_ONLY, {
                 "viewStateStr": InputVarAttribute("null", const.UNKNOWN),
@@ -425,7 +429,7 @@ class ElectricityBillBotModule(bot_module.BotModule):
                 "floor": InputVarAttribute("null", const.UNKNOWN),
                 "roomList": InputVarAttribute("null", const.UNKNOWN),
                 "final_location": InputVarAttribute("", const.UNKNOWN),
-            }, {}),
+            }, {}, cls.handle_exception),
 
             "askSave": Interceptor(base_priority, cls.after_ask_save, const.TYPE_RULE_MSG_ONLY, {
                 "viewStateStr": InputVarAttribute("null", const.UNKNOWN),
@@ -433,7 +437,7 @@ class ElectricityBillBotModule(bot_module.BotModule):
                 "building": InputVarAttribute("null", const.UNKNOWN),
                 "floor": InputVarAttribute("null", const.UNKNOWN),
                 "room": InputVarAttribute("null", const.UNKNOWN),
-            }, {}),
+            }, {}, cls.handle_exception),
         }
 
         retval = {}
@@ -443,7 +447,7 @@ class ElectricityBillBotModule(bot_module.BotModule):
                 input_vars_1["powerbill_" + k1] = InputVarAttribute("null", const.GROUP)
                 
             retval["powerbill_" + k] = [
-                Interceptor(v.priority, v.func, v.type_rule, input_vars_1, {"prefix": "powerbill_", "var_scope": const.GROUP})
+                Interceptor(v.priority, v.func, v.type_rule, input_vars_1, {"prefix": "powerbill_", "var_scope": const.GROUP}, cls.handle_exception)
             ]
 
             input_vars_2 = {}
@@ -451,7 +455,7 @@ class ElectricityBillBotModule(bot_module.BotModule):
                 input_vars_2["powerbill_i_" + k2] = InputVarAttribute("null", const.INDIVIDUAL)
 
             retval["powerbill_i_" + k] = [
-                Interceptor(v.priority, v.func, v.type_rule, input_vars_2, {"prefix": "powerbill_i_", "var_scope": const.INDIVIDUAL})
+                Interceptor(v.priority, v.func, v.type_rule, input_vars_2, {"prefix": "powerbill_i_", "var_scope": const.INDIVIDUAL}, cls.handle_exception)
             ]
 
         return retval
@@ -467,7 +471,7 @@ class ElectricityBillBotModule(bot_module.BotModule):
                 "powerbill_i_floor_saved": InputVarAttribute("null", const.INDIVIDUAL),
                 "powerbill_i_room_saved": InputVarAttribute("null", const.INDIVIDUAL),
                 "powerbill_i_final_location": InputVarAttribute("", const.INDIVIDUAL),
-            }, {"prefix": "powerbill_i_", "var_scope": const.INDIVIDUAL}),
+            }, {"prefix": "powerbill_i_", "var_scope": const.INDIVIDUAL}, cls.handle_exception),
             Interceptor(base_priority + 1, cls.intercept_powerbill, const.TYPE_RULE_MSG_ONLY, {
                 "powerbill_viewStateStr_saved": InputVarAttribute("null", const.GROUP),
                 "powerbill_campus_saved": InputVarAttribute("null", const.GROUP),
@@ -475,7 +479,7 @@ class ElectricityBillBotModule(bot_module.BotModule):
                 "powerbill_floor_saved": InputVarAttribute("null", const.GROUP),
                 "powerbill_room_saved": InputVarAttribute("null", const.GROUP),
                 "powerbill_final_location": InputVarAttribute("", const.GROUP),
-            }, {"prefix": "powerbill_", "var_scope": const.GROUP}),
+            }, {"prefix": "powerbill_", "var_scope": const.GROUP}, cls.handle_exception),
         ]
 
 
@@ -485,12 +489,12 @@ class ElectricityBillBotModule(bot_module.BotModule):
             Interceptor(base_priority, cls.intercept_powerbill_delete, const.TYPE_RULE_MSG_ONLY, {
                 "powerbill_i_viewStateStr_saved": InputVarAttribute("null", const.INDIVIDUAL),
                 "powerbill_i_final_location": InputVarAttribute("", const.INDIVIDUAL),
-            }, {"prefix": "powerbill_i_", "var_scope": const.INDIVIDUAL}),
+            }, {"prefix": "powerbill_i_", "var_scope": const.INDIVIDUAL}, cls.handle_exception),
             
             Interceptor(base_priority + 1, cls.intercept_powerbill_delete, const.TYPE_RULE_MSG_ONLY, {
                 "powerbill_viewStateStr_saved": InputVarAttribute("null", const.GROUP),
                 "powerbill_final_location": InputVarAttribute("", const.GROUP),
-            }, {"prefix": "powerbill_", "var_scope": const.GROUP}),
+            }, {"prefix": "powerbill_", "var_scope": const.GROUP}, cls.handle_exception),
         ]
 
 module_class = ElectricityBillBotModule

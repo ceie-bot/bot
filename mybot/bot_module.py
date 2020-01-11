@@ -2,7 +2,7 @@ import collections
 import typing
 from . import const
 
-class Interceptor(collections.namedtuple("Interceptor", ["priority", "func", "type_rule", "input_vars", "kwargs"])):
+class Interceptor(collections.namedtuple("Interceptor", ["priority", "func", "type_rule", "input_vars", "kwargs", "exception_handler"])):
 
     def accepts(self, context):
         type_rule: typing.Dict = self.type_rule
@@ -54,7 +54,7 @@ class BotModule(object):
     def prior_function_list(cls, base_priority):
         if cls.prior_intercept != BotModule.prior_intercept:
             return [
-                Interceptor(base_priority, cls.prior_intercept, const.TYPE_RULE_MSG_ONLY, {}, {})
+                Interceptor(base_priority, cls.prior_intercept, const.TYPE_RULE_MSG_ONLY, {}, {}, None)
             ]
         return []
 
@@ -62,7 +62,7 @@ class BotModule(object):
     def idle_function_list(cls, base_priority):
         if cls.idle_intercept != BotModule.idle_intercept:
             return [
-                Interceptor(base_priority, cls.idle_intercept, const.TYPE_RULE_MSG_ONLY, {}, {})
+                Interceptor(base_priority, cls.idle_intercept, const.TYPE_RULE_MSG_ONLY, {}, {}, None)
             ]
         return []
 
@@ -70,6 +70,6 @@ class BotModule(object):
     def all_state_function_list(cls, base_priority):
         if cls.all_state_intercept != BotModule.all_state_intercept:
             return [
-                Interceptor(base_priority, cls.all_state_intercept, const.TYPE_RULE_MSG_ONLY, {}, {})
+                Interceptor(base_priority, cls.all_state_intercept, const.TYPE_RULE_MSG_ONLY, {}, {}, None)
             ]
         return []

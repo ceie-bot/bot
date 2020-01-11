@@ -62,7 +62,7 @@ class DDBotElectricityBillBotModule(bot_module.BotModule):
     @classmethod
     def all_state_function_list(cls, base_priority):
         return [
-            Interceptor(base_priority, cls.intercept_ddbot_powerbill, const.TYPE_RULE_MSG_ONLY, {}, {}),
+            Interceptor(base_priority, cls.intercept_ddbot_powerbill, const.TYPE_RULE_MSG_ONLY, {}, {}, None),
         ]
 
 module_class = DDBotElectricityBillBotModule

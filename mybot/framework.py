@@ -134,7 +134,17 @@ def main():
         for var_name, var_attr in interceptor.input_vars.items():
             input_vars[var_name] = db.get_variable(util.get_identity(context, var_attr.identity_scope), var_name, var_attr.default_val)
 
-        intercepted = await interceptor.func(bot, context, msg, input_vars, update_vars, extras, **interceptor.kwargs)
+        intercepted = False
+
+        if interceptor.exception_handler:
+            try:
+                intercepted = await interceptor.func(bot, context, msg, input_vars, update_vars, extras, **interceptor.kwargs)
+            except Exception as e:
+                intercepted = interceptor.exception_handler(e, bot, context, msg, input_vars, update_vars, extras, **interceptor.kwargs)
+                if intercepted is None:
+                    intercepted = True
+        else:
+            intercepted = await interceptor.func(bot, context, msg, input_vars, update_vars, extras, **interceptor.kwargs)
 
         return intercepted
 

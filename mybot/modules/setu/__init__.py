@@ -180,7 +180,7 @@ class SetuBotModule(bot_module.BotModule):
                 "setu_picurls": InputVarAttribute("[]", const.GROUP),
                 "setu_lasttime": InputVarAttribute("{\"fetch\": 0, \"search\": 0}", const.GROUP),
                 "setu_lasttime_saved": InputVarAttribute("{\"fetch\": 0, \"search\": 0}", const.GROUP),
-            }, {})
+            }, {}, None)
         ]
 
 module_class = SetuBotModule

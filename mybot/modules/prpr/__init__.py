@@ -52,7 +52,7 @@ class PrprBotModule(bot_module.BotModule):
                     "^sub_type": ["notice"]
                 }, {
                     "prpr": InputVarAttribute("nyaa", const.INDIVIDUAL)
-                }, {})
+                }, {}, None)
             ]
         }
 
