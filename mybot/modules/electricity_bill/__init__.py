@@ -1,6 +1,7 @@
 import bs4
 import json
 import aiohttp
+import traceback
 import lxml.html
 
 from ... import log
@@ -295,9 +296,11 @@ class ElectricityBillBotModule(bot_module.BotModule):
         powerbill_viewStateStr = json.loads(input_vars[prefix + 'viewStateStr_saved'])
 
         jar = aiohttp.CookieJar(unsafe=True)
-        async with aiohttp.ClientSession(cookie_jar=jar) as session:
+        async with aiohttp.ClientSession(cookie_jar=jar, timeout=aiohttp.ClientTimeout(total=5)) as session:
             r = await session.post("http://202.120.163.129:88/default.aspx", data = {"__EVENTTARGET": "", "__EVENTARGUMENT": "", "__LASTFOCUS": "", "__VIEWSTATE": powerbill_viewStateStr, "__VIEWSTATEGENERATOR": "CA0B0334", "drlouming": powerbill_campus, "drceng": powerbill_building, "dr_ceng": powerbill_floor, "drfangjian": powerbill_room, "radio": "usedR", "ImageButton1.x": 50, "ImageButton1.y": 50}, proxy = priv_config.PROXY_TJ)
-            html = bs4.BeautifulSoup(await r.text(), "lxml")
+            data = await r.text()
+            extras["powerbill_direct_query_text"] = data
+            html = bs4.BeautifulSoup(data, "lxml")
 
         credit = html.select_one(".number.orange").string
 
@@ -400,6 +403,9 @@ class ElectricityBillBotModule(bot_module.BotModule):
     @classmethod
     async def handle_exception(cls, e: Exception, bot, context, msg, input_vars, update_vars, extras, **kwargs):
         await bot.send(context, "查询电费失败了：" + e.__class__.__name__)
+        tb = traceback.format_exc().strip()
+        await log.warning("查询电费错误在 Context " + repr(context) + "：\n" + tb)
+        await log.warning("此时的 direct_query_text：" + extras.get("powerbill_direct_query_text", "<No key>"))
     
     @classmethod
     def state_function_mapping(cls, base_priority):

@@ -140,7 +140,7 @@ def main():
             try:
                 intercepted = await interceptor.func(bot, context, msg, input_vars, update_vars, extras, **interceptor.kwargs)
             except Exception as e:
-                intercepted = interceptor.exception_handler(e, bot, context, msg, input_vars, update_vars, extras, **interceptor.kwargs)
+                intercepted = await interceptor.exception_handler(e, bot, context, msg, input_vars, update_vars, extras, **interceptor.kwargs)
                 if intercepted is None:
                     intercepted = True
         else:

@@ -19,9 +19,6 @@ class NameCallingBotModule(bot_module.BotModule):
     @classmethod
     async def all_state_intercept(cls, bot, context, msg, input_vars, update_vars, extras, **kwargs):
 
-        if util.get_identity(context, const.INDIVIDUAL).strip() != priv_config.SRC:
-            return False
-
         valid = False
         for msg_data in context['message']:
             if msg_data['type'] == 'at':
@@ -39,7 +36,10 @@ class NameCallingBotModule(bot_module.BotModule):
         valid = valid and extras["_msg_filter"] == ""
 
         if valid:
-            await bot.send(context, "[CQ:at,qq=%s] %s" % (priv_config.TARGET, random.choice(priv_config.NAME_CALLING_SENTENCES)))
+            if util.get_identity(context, const.INDIVIDUAL).strip() == priv_config.SRC:
+                await bot.send(context, "[CQ:at,qq=%s] %s" % (priv_config.TARGET, random.choice(priv_config.NAME_CALLING_SENTENCES)))
+            else:
+                await bot.send(context, "[CQ:at,qq=%s] %s" % (priv_config.TARGET, random.choice(priv_config.PRAISE_SENTENCES)))
             return True
         return False
 

@@ -27,23 +27,23 @@ def get_identity(context, scope):
             return str(context.get("user_id", "unknown_2"))
 
 async def http_post(*args, **kwargs):
-    timeout_secs = 15
+    timeout_secs = 5
     if 'timeout_secs' in kwargs:
         timeout_secs = kwargs['timeout_secs']
         del kwargs['timeout_secs']
 
-    async with aiohttp.ClientSession(timeout = aiohttp.ClientTimeout(total=timeout_secs)) as session:
+    async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=timeout_secs)) as session:
         async with session.post(*args, **kwargs) as resp:
             data = await resp.text()
     return data
 
 async def http_get(*args, **kwargs):
-    timeout_secs = 15
+    timeout_secs = 5
     if 'timeout_secs' in kwargs:
         timeout_secs = kwargs['timeout_secs']
         del kwargs['timeout_secs']
 
-    async with aiohttp.ClientSession(timeout = aiohttp.ClientTimeout(total=timeout_secs)) as session:
+    async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=timeout_secs)) as session:
         async with session.get(*args, **kwargs) as resp:
             data = await resp.text()
     return data
