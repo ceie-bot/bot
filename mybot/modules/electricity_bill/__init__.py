@@ -3,17 +3,28 @@ import json
 import aiohttp
 import traceback
 import lxml.html
+import re
+
+from apscheduler.triggers.cron import CronTrigger
+from apscheduler.triggers.interval import IntervalTrigger
+from apscheduler.job import Job
+from apscheduler.jobstores.base import ConflictingIdError
 
 from ... import log
 from ... import bot_module
 from ...bot_module import Interceptor, InputVarAttribute
 from ... import const
 from ... import util
+from ... import db
+
+from .. import ddbot_electricity_bill
 
 try:
     from . import config as priv_config
 except ImportError:
     from . import config_example as priv_config
+
+REGEX_TIME = re.compile(r'^(?P<hour>\d\d):(?P<minute>\d\d)$')
 
 class ElectricityBillBotModule(bot_module.BotModule):
     @classmethod
@@ -400,6 +411,101 @@ class ElectricityBillBotModule(bot_module.BotModule):
 
         return False
 
+
+    @classmethod
+    async def execute_crontab_job(cls, job_id, bot, context, building):
+        if False:
+            iden = util.get_identity(context, const.GROUP)
+            powerbill_viewStateStr_saved = json.loads(db.get_variable(iden, "powerbill_viewStateStr_saved", "null"))
+            powerbill_viewStateStr_saved = json.loads(db.get_variable(iden, "powerbill_viewStateStr_saved", "null"))
+
+            if powerbill_viewStateStr_saved is not None:
+                pseudo_extras = {}
+
+                try:
+                    await cls.direct_query(bot, context, "", {
+                        "powerbill_final_location": db.get_variable(iden, "powerbill_final_location", "null"),
+                        "powerbill_campus_saved": db.get_variable(iden, "powerbill_campus_saved", "null"),
+                        "powerbill_building_saved": db.get_variable(iden, "powerbill_building_saved", "null"),
+                        "powerbill_floor_saved": db.get_variable(iden, "powerbill_floor_saved", "null"),
+                        "powerbill_room_saved": db.get_variable(iden, "powerbill_room_saved", "null"),
+                        "powerbill_viewStateStr_saved": json.dumps(powerbill_viewStateStr_saved),
+                    }, {}, pseudo_extras, prefix="powerbill_", var_scope=const.GROUP)
+                except Exception as e:
+                    print(e)
+                    await cls.handle_exception(e, bot, context, "", {}, {}, pseudo_extras)
+                    return
+        
+                await bot.send(context, pseudo_extras["_return"]['reply'])
+
+        else:
+            pseudo_extras = {}
+            if await ddbot_electricity_bill.DDBotElectricityBillBotModule.real_query_ddbot(bot, context, building, pseudo_extras):
+                await bot.send(context, pseudo_extras["_return"]['reply'])
+            return True
+            
+
+    @classmethod
+    async def add_crontab_job(cls, bot, context, msg, input_vars, update_vars, extras, **kwargs):
+        if u'电费' in msg and u'定时' in msg:
+
+            if u'取消' in msg:
+                any = False
+                for j in util.get_jobs():
+                    real_id = j.id.split(":")[-1]
+                    args = real_id.split("/")
+                    if args[0] == "powerbill_crontab" and args[1] == util.get_identity(context, const.GROUP):
+                        j.remove()
+                        any = True
+
+                if any:
+                    result = "取消了定时电费。"
+                    await bot.send(context, result)
+                return True
+
+            else:
+                msg = msg.replace("查询", "")
+                msg = msg.replace("电费", "")
+                msg = msg.replace("\t", " ")
+                msg = msg.replace("\n", " ")
+                msg = msg.replace("定时", "")
+                msg = msg.strip()
+
+                time_hour = -1
+                time_minute = -1
+                
+                building = ""
+
+                for piece in msg.split(" "):
+                    time_match = REGEX_TIME.fullmatch(piece)
+                    if time_match:
+                        time_hour = int(time_match.group("hour"))
+                        time_minute = int(time_match.group("minute"))
+                    elif piece:
+                        building += piece + " "
+
+                building = building.strip()
+
+                print(building, time_hour, time_minute)
+                if building == "" or time_hour == -1 or time_minute == -1:
+                    await bot.send(context, "用法示范：（同一时间只能设定一个任务）定时电费 08:30 7 457")
+                    return True
+
+                jobcall = util.make_jobcall(cls.execute_crontab_job, context, building)
+                job_id = "powerbill_crontab/%s/%02d%02d" % (util.get_identity(context, const.GROUP), time_hour, time_minute)
+                
+                try:
+                    util.add_job(jobcall, trigger=CronTrigger(hour=time_hour, minute=time_minute), id=job_id)
+                except ConflictingIdError:
+                    await bot.send(context, "设置每天的 %d:%d 查询电费：失败：已有这个任务" % (time_hour, time_minute))
+                    return True
+
+                await bot.send(context, "设置每天的 %d:%d 查询电费：成功" % (time_hour, time_minute))
+                return True
+
+        return False
+
+
     @classmethod
     async def handle_exception(cls, e: Exception, bot, context, msg, input_vars, update_vars, extras, **kwargs):
         await bot.send(context, "查询电费失败了：" + e.__class__.__name__)
@@ -470,7 +576,7 @@ class ElectricityBillBotModule(bot_module.BotModule):
     @classmethod
     def idle_function_list(cls, base_priority):
         return [
-            Interceptor(base_priority, cls.intercept_powerbill, const.TYPE_RULE_MSG_ONLY, {
+            Interceptor(base_priority + 1, cls.intercept_powerbill, const.TYPE_RULE_MSG_ONLY, {
                 "powerbill_i_viewStateStr_saved": InputVarAttribute("null", const.INDIVIDUAL),
                 "powerbill_i_campus_saved": InputVarAttribute("null", const.INDIVIDUAL),
                 "powerbill_i_building_saved": InputVarAttribute("null", const.INDIVIDUAL),
@@ -478,7 +584,7 @@ class ElectricityBillBotModule(bot_module.BotModule):
                 "powerbill_i_room_saved": InputVarAttribute("null", const.INDIVIDUAL),
                 "powerbill_i_final_location": InputVarAttribute("", const.INDIVIDUAL),
             }, {"prefix": "powerbill_i_", "var_scope": const.INDIVIDUAL}, cls.handle_exception),
-            Interceptor(base_priority + 1, cls.intercept_powerbill, const.TYPE_RULE_MSG_ONLY, {
+            Interceptor(base_priority + 2, cls.intercept_powerbill, const.TYPE_RULE_MSG_ONLY, {
                 "powerbill_viewStateStr_saved": InputVarAttribute("null", const.GROUP),
                 "powerbill_campus_saved": InputVarAttribute("null", const.GROUP),
                 "powerbill_building_saved": InputVarAttribute("null", const.GROUP),
@@ -486,6 +592,8 @@ class ElectricityBillBotModule(bot_module.BotModule):
                 "powerbill_room_saved": InputVarAttribute("null", const.GROUP),
                 "powerbill_final_location": InputVarAttribute("", const.GROUP),
             }, {"prefix": "powerbill_", "var_scope": const.GROUP}, cls.handle_exception),
+
+            Interceptor(base_priority, cls.add_crontab_job, const.TYPE_RULE_MSG_ONLY, {}, {}, cls.handle_exception),
         ]
 
 

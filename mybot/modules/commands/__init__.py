@@ -21,6 +21,7 @@ class CommandsBotModule(bot_module.BotModule):
     @classmethod
     async def prior_intercept(cls, bot, context, msg, input_vars, update_vars, extras, **kwargs):
         msg_strip = extras["_msg_strip"].lower()
+        msg = msg.replace("&#91;", "[").replace("&#93;", "]")
 
         if msg_strip == r'\resetstatus':
             #await bot.send(context, "状态重置为 idle。")
@@ -38,8 +39,8 @@ class CommandsBotModule(bot_module.BotModule):
             arr = msg.split(" ")
             group_id = int(arr[1])
             real_msg = ' '.join(arr[2:])
-            log.info(r"\sendG " + str(group_id) + " " + real_msg)
-            data = await util.http_post(const.API_URL_PREFIX + "/send_group_msg", json={"group_id": group_id, "message": real_msg}, headers={"Content-Type": "application/json; charset=UTF-8"})
+            await log.info(r"\sendG " + str(group_id) + " " + real_msg)
+            data = await util.http_post(const.API_URL_PREFIX + "/send_group_msg", json={"group_id": group_id, "message": real_msg, "auto_escape": False}, headers={"Content-Type": "application/json; charset=UTF-8"})
 
             await bot.send(context, data)
             return True
@@ -48,8 +49,8 @@ class CommandsBotModule(bot_module.BotModule):
             arr = msg.split(" ")
             group_id = priv_config.FAV_GROUP
             real_msg = ' '.join(arr[1:])
-            log.info(r"\sendG " + str(group_id) + " " + real_msg)
-            data = await util.http_post(const.API_URL_PREFIX + "/send_group_msg", json={"group_id": group_id, "message": real_msg}, headers={"Content-Type": "application/json; charset=UTF-8"})
+            await log.info(r"\sendG " + str(group_id) + " " + real_msg)
+            data = await util.http_post(const.API_URL_PREFIX + "/send_group_msg", json={"group_id": group_id, "message": real_msg, "auto_escape": False}, headers={"Content-Type": "application/json; charset=UTF-8"})
 
             await bot.send(context, data)
             return True
@@ -58,8 +59,8 @@ class CommandsBotModule(bot_module.BotModule):
             arr = msg.split(" ")
             user_id = int(arr[1])
             real_msg = ' '.join(arr[2:])
-            log.info(r"\sendP " + str(user_id) + " " + real_msg)
-            data = await util.http_post(const.API_URL_PREFIX + "/send_private_msg", json={"user_id": user_id, "message": real_msg}, headers={"Content-Type": "application/json; charset=UTF-8"})
+            await log.info(r"\sendP " + str(user_id) + " " + real_msg)
+            data = await util.http_post(const.API_URL_PREFIX + "/send_private_msg", json={"user_id": user_id, "message": real_msg, "auto_escape": False}, headers={"Content-Type": "application/json; charset=UTF-8"})
 
             await bot.send(context, data)
             return True

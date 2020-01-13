@@ -12,6 +12,22 @@ from ... import util
 class DDBotElectricityBillBotModule(bot_module.BotModule):
 
     @classmethod
+    async def real_query_ddbot(cls, bot, context, building, extras):
+        try:
+            data = await util.http_get("http://pc.washingpatrick.cn:2345/elec", params={"room": building, "o": "1"}, timeout_secs=3)
+        except Exception:
+            tb = traceback.format_exc().strip()
+            await bot.send(context, "ddbot 由于以下错误没有发出声音：\n" + tb)
+            await log.error("ddbot 错误在 Context " + repr(context) + "：\n" + tb)
+            return False
+
+        if 'error' not in data.lower():
+            extras["_return"] = {"reply": "ddbot 发出了 " + data + " 的声音", "auto_escape": False}
+            return True
+        else:
+            await log.debug("ddbot: " + data)
+
+    @classmethod
     async def intercept_ddbot_powerbill(cls, bot, context, msg, input_vars, update_vars, extras, **kwargs):
         msg = ""
         for msg_data in context['message']:
@@ -42,19 +58,7 @@ class DDBotElectricityBillBotModule(bot_module.BotModule):
             if msg == u'':
                 return False
 
-            try:
-                data = await util.http_get("http://pc.washingpatrick.cn:2345/elec", params={"room": msg, "o": "1"}, timeout_secs=3)
-            except Exception:
-                tb = traceback.format_exc().strip()
-                await bot.send(context, "ddbot 由于以下错误没有发出声音：\n" + tb)
-                await log.error("ddbot 错误在 Context " + repr(context) + "：\n" + tb)
-                return False
-
-            if 'error' not in data.lower():
-                extras["_return"] = {"reply": "ddbot 发出了 " + data + " 的声音", "auto_escape": False}
-                return True
-            else:
-                await log.debug("ddbot: " + data)
+            return await cls.real_query_ddbot(bot, context, msg, extras)
 
         return False
 

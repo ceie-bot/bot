@@ -8,6 +8,7 @@ QQ_ADMINISTRATORS = ["10000"] # qq id of administrators
 
 DB_SQLITE_DIR = os.path.join(os.path.dirname(os.path.realpath(__file__)), os.pardir)
 DB_SQLITE_FILE = os.path.join(DB_SQLITE_DIR, "qqbot.db")
+DB_SQLITE_JOB_FILE = os.path.join(DB_SQLITE_DIR, "jobs.db")
 
 MODULES = [
     {

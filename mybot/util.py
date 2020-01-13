@@ -4,10 +4,12 @@ import inspect
 import typing
 import collections
 import apscheduler.schedulers.asyncio
+from aiocqhttp import CQHttp
 
 from . import const
 
 scheduler: apscheduler.schedulers.asyncio.AsyncIOScheduler = None
+global_bot: CQHttp = None
 
 def get_identity(context, scope):
     """
@@ -57,6 +59,10 @@ JobCall = collections.namedtuple("JobCall", ["func", "args", "kwargs"])
 def make_jobcall(func, *args, **kwargs):
     return JobCall(func, args, kwargs)
 
+async def _call_jobcall_with_global_bot(jobcall: JobCall, orig_job_id: str):
+    if global_bot is None:
+        return
+    return await jobcall.func(orig_job_id, global_bot, *jobcall.args, **jobcall.kwargs)
 
 def _process_add_job_args(jobcall: JobCall, args: typing.List, kwargs: typing.Dict):
     if not isinstance(jobcall, JobCall):
@@ -75,11 +81,10 @@ def _process_add_job_args(jobcall: JobCall, args: typing.List, kwargs: typing.Di
     
     if "prefix_job_id" in kwargs:
         del kwargs["prefix_job_id"]
-    
-    def _call():
-        jobcall.func(orig_job_id, *jobcall.args, *jobcall.kwargs)
 
-    args.insert(0, _call)
+    args.insert(0, _call_jobcall_with_global_bot)
+    kwargs["kwargs"] = {}
+    kwargs["args"] = [jobcall, orig_job_id]
 
 
 def _process_edit_job_args(args: typing.List, kwargs: typing.Dict):
@@ -98,15 +103,30 @@ def add_job(jobcall, *args, **kwargs):
     """
     Add a job.
 
+    Typical usage:
+    
+    `util.add_job(util.make_jobcall(func, arg2, arg3, kwarg0="xxx", kwarg1="yyy"), "interval", seconds=5, job_id="my_job")`
+
     The parameters are identical to those of 
     `apscheduler.schedulers.base.BaseScheduler.add_job`,
-    with the exception of `jobcall`, which could be a 
-    JobCall object created by `util.make_jobcall()`.
+    with the exception of `args[0]` is a `jobcall`, which
+    could be a JobCall object created by `util.make_jobcall()`.
+
+    `jobcall.func` must accept a `str` as its 1st
+    argument. This `str` contains the job id
+    (not prefixed).
+
+    `jobcall.func` must accept a `Bot` instance as
+    its 2nd argument, which is used in sending messages to 
+    CQHTTP API. This `Bot` instance is provided by 
+    the framework at RUNTIME.
+
+    The two arguments must not be provided by `jobcall.args`.
 
     `kwargs["job_id"]` MUST BE PROVIDED.
 
     The JobCall object will be called in a way like:
-    `jobcall.func(job_id, *jobcall.args, *jobcall.kwargs)`
+    `jobcall.func(job_id, global_bot_provided_by_runtime, *jobcall.args, **jobcall.kwargs)`
 
     To ensure isolation, the id of jobs are *internally*
     prefixed with the module name. If `kwargs["prefix_job_id"]`
@@ -115,7 +135,10 @@ def add_job(jobcall, *args, **kwargs):
     It is similar to the rest of the job-related
     functions.
     """
+    args = list(args)
     _process_add_job_args(jobcall, args, kwargs)
+    print(args)
+    print(kwargs)
     return scheduler.add_job(*args, **kwargs)
 
 
@@ -129,6 +152,7 @@ def get_job(*args, **kwargs):
     For the interal prefix of `job_id`, 
     please refer to `add_job`.
     """
+    args = list(args)
     _process_edit_job_args(args, kwargs)
     return scheduler.get_job(*args, **kwargs)
 
@@ -142,6 +166,7 @@ def pause_job(*args, **kwargs):
     For the interal prefix of `job_id`, 
     please refer to `add_job`.
     """
+    args = list(args)
     _process_edit_job_args(args, kwargs)
     return scheduler.pause_job(*args, **kwargs)
 
@@ -168,6 +193,7 @@ def resume_job(*args, **kwargs):
     For the interal prefix of `job_id`, 
     please refer to `add_job`.
     """
+    args = list(args)
     _process_edit_job_args(args, kwargs)
     return scheduler.resume_job(*args, **kwargs)
 
@@ -181,6 +207,7 @@ def modify_job(*args, **kwargs):
     For the interal prefix of `job_id`, 
     please refer to `add_job`.
     """
+    args = list(args)
     _process_edit_job_args(args, kwargs)
     return scheduler.modify_job(*args, **kwargs)
 

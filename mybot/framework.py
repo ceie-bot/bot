@@ -76,7 +76,7 @@ def load_modules():
 def init_scheduler():
     util.scheduler = apscheduler.schedulers.asyncio.AsyncIOScheduler(
         jobstores={
-            'default': apscheduler.jobstores.sqlalchemy.SQLAlchemyJobStore(url="sqlite:///testjob.db")
+            'default': apscheduler.jobstores.sqlalchemy.SQLAlchemyJobStore(url="sqlite:///%s" % const.DB_SQLITE_JOB_FILE)
         },
         executors={
             #"default": apscheduler.executors.pool.ThreadPoolExecutor(max_workers=2)
@@ -254,7 +254,7 @@ def main():
             return False
 
     configure_log(bot)
-
+    util.global_bot = bot
     bot.run(host = const.LISTEN_ADDRESS, port = const.LISTEN_PORT, access_log_format="%(h)s %(r)s %({x-self-id}i)s %(s)s %(b)s %(L)ss")
 
 
