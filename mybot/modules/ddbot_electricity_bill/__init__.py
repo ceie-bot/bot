@@ -17,12 +17,13 @@ class DDBotElectricityBillBotModule(bot_module.BotModule):
             data = await util.http_get("http://pc.washingpatrick.cn:2345/elec", params={"room": building, "o": "1"}, timeout_secs=3)
         except Exception:
             tb = traceback.format_exc().strip()
-            await bot.send(context, "ddbot 由于以下错误没有发出声音：\n" + tb)
+            # await bot.send(context, "ddbot 由于以下错误没有发出声音：\n" + tb)
+            await bot.send(context, "。")
             await log.error("ddbot 错误在 Context " + repr(context) + "：\n" + tb)
             return False
 
         if 'error' not in data.lower():
-            extras["_return"] = {"reply": "ddbot 发出了 " + data + " 的声音", "auto_escape": False}
+            extras["_return"] = {"reply": building + "：ddbot 发出了 " + data + " 的声音", "auto_escape": False}
             return True
         else:
             await log.debug("ddbot: " + data)

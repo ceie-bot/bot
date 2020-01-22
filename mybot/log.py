@@ -54,7 +54,7 @@ levels = [
     "warning",
     "warn",
     "error",
-    "critial",
+    "critical",
     "fatal"
 ]
 
@@ -65,7 +65,7 @@ info = dummy
 warning = dummy
 warn = dummy
 error = dummy
-critial = dummy
+critical = dummy
 fatal = dummy
 
 for level in levels:
