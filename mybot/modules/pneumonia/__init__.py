@@ -119,7 +119,7 @@ class PneumoniaBotModule(bot_module.BotModule):
             result += "\n"
 
             for i, news_obj in enumerate(news_data["result"][0:5]):
-                result += ("%d. " % (i+1)) + news_obj["pubDateStr"] + " - " + news_obj["title"] + "\n"
+                result += ("%d. " % (i+1)) + datetime.datetime.fromtimestamp(news_obj["modifyTime"] / 1000, tz=datetime.timezone(datetime.timedelta(hours=8))).strftime("%Y-%m-%d %H:%M:%S") + " - " + news_obj["title"] + "\n"
 
             await bot.send(context, result.strip())
             return
