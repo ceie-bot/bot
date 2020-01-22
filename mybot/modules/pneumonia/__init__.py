@@ -37,27 +37,36 @@ class PneumoniaBotModule(bot_module.BotModule):
 
     @classmethod
     async def check_alert_update(cls, job_id, bot, context):
-        data = await util.http_get("https://3g.dxy.cn/newh5/view/pneumonia")
+        data = await util.http_get("https://3g.dxy.cn/newh5/view/pneumonia", timeout_secs=3)
         data = REGEX_NEWS_EXTRACT_JSON.search(data).group("json")
         data = json.loads(data)
         if not "result" in data:
             await bot.send(context, "查询疫情无结果，预警配置错误")
             return
 
-        history_var_name = "pneumonia_alerts"
+        history_var_name = "pneumonia_alerts_new"
         
-        history_alerts = json.loads(db.get_variable(util.get_identity(context, const.GROUP), history_var_name, "[]"))
-        alert = cls.news_obj_to_str(data['result'][0])
-        alert_is_old = alert in history_alerts
-        history_alerts.insert(0, alert)
+        history_alerts = json.loads(db.get_variable(util.get_identity(context, const.GROUP), history_var_name, "[" + str(data['result'][0]["id"]) + "]"))
+
+        result = "有新的疫情动态\n"
+        count = 0
+        for news_obj in data['result']:
+            alert = cls.news_obj_to_str(news_obj)
+            alert_spoken = alert in history_alerts
+            alert_is_old = news_obj["id"] < history_alerts[-1]
+            history_alerts.insert(0, alert)
+
+            if alert_is_old or count >= 5:
+                break
+
+            if not alert_spoken:
+                result += "\n" + alert
+                count += 1
+
         db.set_variable(util.get_identity(context, const.GROUP), history_var_name, json.dumps(history_alerts))
 
-        if alert_is_old:
-            return True
-
-        result = "有新的疫情动态\n\n" + alert
-
-        await bot.send(context, result)
+        if count:
+            await bot.send(context, result)
         return
 
 
