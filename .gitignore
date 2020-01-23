@@ -3,6 +3,7 @@ backup
 .env
 **/*.db
 **/*.session
+**/*.session-journal
 **/__pycache__
 **/test.py
 **/db_test.py
