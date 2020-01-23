@@ -106,8 +106,8 @@ class PneumoniaBotModule(bot_module.BotModule):
                 if alert and not alert_spoken:
                     history_alerts.insert(0, alert)
                     if digest:
-                        alert = (alert.split("】")[0] + "】").replace("\n\n", " ")
-                    result += "\n\n" + alert + "@" + msg_obj.date.astimezone(tz=datetime.timezone(datetime.timedelta(hours=8))).strftime("%Y-%m-%d %H:%M:%S") + " UTC+8"
+                        alert = "\n" + (alert.split("】")[0] + "】").replace("\n\n", " ")
+                    result += "\n" + alert + "@" + msg_obj.date.astimezone(tz=datetime.timezone(datetime.timedelta(hours=8))).strftime("%Y-%m-%d %H:%M:%S") + " UTC+8"
                     count += 1
 
             db.set_variable(util.get_identity(context, const.GROUP), history_var_name, json.dumps(history_alerts))
