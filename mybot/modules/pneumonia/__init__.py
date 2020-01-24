@@ -193,10 +193,6 @@ class PneumoniaBotModule(bot_module.BotModule):
             news_data = REGEX_NEWS_EXTRACT_JSON.search(data).group("json")
             news_data = json.loads(news_data)
 
-            if not "result" in news_data:
-                await bot.send(context, "查询疫情无结果")
-                return
-
             result = ""
 
             for region in byregion_data:
@@ -213,14 +209,14 @@ class PneumoniaBotModule(bot_module.BotModule):
                 if remark != "":
                     remarks.append(remark)
 
-            remarks = "；".join(remarks)
+            remarks = "\n".join(remarks)
             total_data["remarks"] = remarks
 
-            result += "总计%(countRemark)s\n\n%(virus)s  感染源：%(infectSource)s；传播方式：%(passWay)s；%(remarks)s" % total_data
+            result += "总计%(countRemark)s\n\n%(virus)s\n感染源：%(infectSource)s\n传播方式：%(passWay)s\n%(remarks)s" % total_data
 
             result += "\n\n"
 
-            for i, news_obj in enumerate(news_data["result"][0:5]):
+            for i, news_obj in enumerate(news_data[0:5]):
                 result += ("%d. " % (i+1)) + datetime.datetime.fromtimestamp(news_obj["modifyTime"] / 1000, tz=datetime.timezone(datetime.timedelta(hours=8))).strftime("%Y-%m-%d %H:%M:%S") + " - " + news_obj["title"] + "\n"
 
             await bot.send(context, Message(result) + MessageSegment(type_='image', data={'file': total_data["imgUrl"]}))
