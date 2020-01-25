@@ -206,7 +206,15 @@ class PneumoniaBotModule(bot_module.BotModule):
             result = ""
 
             for region in byregion_data:
-                result += ("%s：确诊 %s 例，疑似 %s 例，治愈 %s 例，死亡 %s 例\n" % (region["provinceShortName"], region["confirmedCount"], region["suspectedCount"], region["curedCount"], region["deadCount"]))
+                result += ("%s：" % (region["provinceShortName"]))
+                result += ("确诊 %s 例" % (region["confirmedCount"]))
+                if region["suspectedCount"]:
+                    result += ("，疑似 %s 例" % (region["suspectedCount"]))
+                if region["curedCount"]:
+                    result += ("，治愈 %s 例" % (region["curedCount"]))
+                if region["deadCount"]:
+                    result += ("，死亡 %s 例" % (region["deadCount"]))
+                result += "\n"
 
             result += "\n"
 
