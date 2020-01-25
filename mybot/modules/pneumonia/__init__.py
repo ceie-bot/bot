@@ -24,8 +24,9 @@ from .. import setu
 
 
 REGEX_NEWS_EXTRACT_JSON = re.compile(r'try\s*\{\s*window\.getTimelineService\s*\=\s*(?P<json>[^\<]*)\}\s*catch\s*\(\s*e\s*\)\s*\{\s*\}')
-REGEX_BYREGION_EXTRACT_JSON = re.compile(r'try\s*\{\s*window\.getListByCountryTypeService1\s*\=\s*(?P<json>[^\<]*)\}\s*catch\s*\(\s*e\s*\)\s*\{\s*\}')
+REGEX_BYREGION_EXTRACT_JSON = re.compile(r'try\s*\{\s*window\.getAreaStat\s*\=\s*(?P<json>[^\<]*)\}\s*catch\s*\(\s*e\s*\)\s*\{\s*\}')
 REGEX_TOTAL_EXTRACT_JSON = re.compile(r'try\s*\{\s*window\.getStatisticsService\s*\=\s*(?P<json>[^\<]*)\}\s*catch\s*\(\s*e\s*\)\s*\{\s*\}')
+REGEX_SINA_EXTRACT_JSON = re.compile(r'window\.SM\s*=\s*(?P<json>[^\n\;]*)\;?\n')
 
 class PneumoniaBotModule(bot_module.BotModule):
     @classmethod
@@ -80,6 +81,10 @@ class PneumoniaBotModule(bot_module.BotModule):
             await log.error("获取疫情动态失败：错误在 Context " + repr(context) + "：\n" + tb)
             return
 
+    @classmethod
+    def alert_to_digest(cls, alert):
+        alert_split = alert.split("】")
+        return "\n" + (alert_split[0] + ("】" if len(alert_split) > 1 else "")).replace("\n\n", " ")
 
     @classmethod
     async def check_alert_update_tg(cls, job_id, bot, context, digest=False):
@@ -98,6 +103,10 @@ class PneumoniaBotModule(bot_module.BotModule):
                 alert = msg_obj.message
                 alert_spoken = alert in history_alerts
                 alert_is_old = msg_obj.id < history_alerts[-1]
+                if digest:
+                    alert_digest = cls.alert_to_digest(alert)
+                    if alert_digest in history_alerts:
+                        alert_spoken = True
                 # await log.warning("%d %d %d", alert_is_old, count, alert_spoken)
 
                 if alert_is_old or count >= 5:
@@ -106,7 +115,8 @@ class PneumoniaBotModule(bot_module.BotModule):
                 if alert and not alert_spoken:
                     history_alerts.insert(0, alert)
                     if digest:
-                        alert = "\n" + (alert.split("】")[0] + "】").replace("\n\n", " ")
+                        history_alerts.insert(0, alert_digest)
+                        alert = alert_digest
                     result += "\n" + alert + "@" + msg_obj.date.astimezone(tz=datetime.timezone(datetime.timedelta(hours=8))).strftime("%Y-%m-%d %H:%M:%S") + " UTC+8"
                     count += 1
 
@@ -165,7 +175,7 @@ class PneumoniaBotModule(bot_module.BotModule):
                     job_id = "pneunomia_alert_tg/%s" % (util.get_identity(context, const.GROUP))
                     
                     try:
-                        util.add_job(jobcall, trigger=IntervalTrigger(seconds=30), id=job_id)
+                        util.add_job(jobcall, trigger=IntervalTrigger(minutes=9), id=job_id)
                     except ConflictingIdError:
                         await bot.send(context, "设置开启疫情动态（Telegram）：失败：已有这个任务")
                         return True
@@ -196,7 +206,7 @@ class PneumoniaBotModule(bot_module.BotModule):
             result = ""
 
             for region in byregion_data:
-                result += ("%s：%s\n" % (region["provinceShortName"], region["tags"]))
+                result += ("%s：确诊 %s 例，疑似 %s 例，治愈 %s 例，死亡 %s 例\n" % (region["provinceShortName"], region["confirmedCount"], region["suspectedCount"], region["curedCount"], region["deadCount"]))
 
             result += "\n"
 
@@ -214,12 +224,22 @@ class PneumoniaBotModule(bot_module.BotModule):
 
             result += "总计%(countRemark)s\n\n%(virus)s\n感染源：%(infectSource)s\n传播方式：%(passWay)s\n%(remarks)s" % total_data
 
-            result += "\n\n"
+            result += "\n"
 
             for i, news_obj in enumerate(news_data[0:5]):
-                result += ("%d. " % (i+1)) + datetime.datetime.fromtimestamp(news_obj["modifyTime"] / 1000, tz=datetime.timezone(datetime.timedelta(hours=8))).strftime("%Y-%m-%d %H:%M:%S") + " - " + news_obj["title"] + "\n"
+                result += "\n" + ("%d. " % (i+1)) + datetime.datetime.fromtimestamp(news_obj["modifyTime"] / 1000, tz=datetime.timezone(datetime.timedelta(hours=8))).strftime("%Y-%m-%d %H:%M:%S") + " - " + news_obj["title"]
 
-            await bot.send(context, Message(result) + MessageSegment(type_='image', data={'file': total_data["imgUrl"]}))
+            await bot.send(context, Message(result))
+
+            data = await util.http_get("https://news.sina.cn/zt_d/yiqing0121")
+
+            sina_data = REGEX_SINA_EXTRACT_JSON.search(data).group("json")
+            sina_data = json.loads(sina_data)
+
+            pic_data_url = sina_data["data"]["apiRes"]["data"]["components"][0]["data"][0]["pic"]
+
+            await bot.send(context, MessageSegment(MessageSegment(type_='image', data={'file': pic_data_url})))
+
             return True
 
         return False
