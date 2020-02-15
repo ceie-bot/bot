@@ -104,6 +104,8 @@ class PneumoniaBotModule(bot_module.BotModule):
             result = "有新的疫情动态（Telegram）"
             count = 0
             for msg_obj in messages:
+                if type(msg_obj) != telethon.tl.types.Message:
+                    continue
                 alert = msg_obj.message
                 alert_spoken = alert in history_alerts or ("msgid" + str(msg_obj.id)) in history_alerts
                 alert_is_old = msg_obj.id < history_alerts[-1]
