@@ -135,7 +135,7 @@ class PneumoniaBotModule(bot_module.BotModule):
 
                     if has_url:
                         result += "\n"
-                    result += "@" + date_toutc8.strftime("%Y-%m-%d %H:%M:%S") + date_toutc8.tzname()
+                    result += "@" + date_toutc8.strftime("%Y-%m-%d %H:%M:%S") + " " + date_toutc8.tzname()
                     count += 1
 
             history_alerts = history_alerts[:(39 if len(history_alerts) > 40 else len(history_alerts))] + [history_alerts[-1]]
