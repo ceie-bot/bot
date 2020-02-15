@@ -4,6 +4,7 @@ import typing
 import traceback
 from telethon import TelegramClient, events, sync
 from telethon import functions, utils
+import telethon
 import socks
 import asyncio
 from apscheduler.triggers.cron import CronTrigger
@@ -70,10 +71,10 @@ class PneumoniaBotModule(bot_module.BotModule):
                     result += "\n\n" + alert
                     count += 1
 
-            db.set_variable(util.get_identity(context, const.GROUP), history_var_name, json.dumps(history_alerts))
-
             if count:
                 await bot.send(context, result)
+                
+            db.set_variable(util.get_identity(context, const.GROUP), history_var_name, json.dumps(history_alerts))
             return
         except Exception:
             tb = traceback.format_exc().strip()
@@ -83,8 +84,10 @@ class PneumoniaBotModule(bot_module.BotModule):
 
     @classmethod
     def alert_to_digest(cls, alert):
+        if alert is None:
+            return None
         alert_split = alert.split("】")
-        return "\n" + (alert_split[0] + ("】" if len(alert_split) > 1 else "")).replace("\n\n", " ")
+        return (alert_split[0] + ("】" if len(alert_split) > 1 else "")).replace("\n", " ")
 
     @classmethod
     async def check_alert_update_tg(cls, job_id, bot, context, digest=False):
@@ -94,6 +97,7 @@ class PneumoniaBotModule(bot_module.BotModule):
             messages = (await client(functions.messages.GetHistoryRequest(peer="nCoV2019", offset_id=0, offset_date=0, add_offset=0, limit=10, max_id=0, min_id=0, hash=0))).messages
 
             history_var_name = "pneumonia_alerts_new2_tg"
+
             
             history_alerts = json.loads(db.get_variable(util.get_identity(context, const.GROUP), history_var_name, "[" + str(messages[0].id) + "]"))
 
@@ -101,25 +105,38 @@ class PneumoniaBotModule(bot_module.BotModule):
             count = 0
             for msg_obj in messages:
                 alert = msg_obj.message
-                alert_spoken = alert in history_alerts
+                alert_spoken = alert in history_alerts or ("msgid" + str(msg_obj.id)) in history_alerts
                 alert_is_old = msg_obj.id < history_alerts[-1]
+                alert = "\n" + alert.replace("\n\n", "\n")
                 if digest:
                     alert_digest = cls.alert_to_digest(alert)
                     if alert_digest in history_alerts:
                         alert_spoken = True
-                # await log.warning("%d %d %d", alert_is_old, count, alert_spoken)
 
                 if alert_is_old or count >= 5:
                     break
 
                 if alert and not alert_spoken:
+                    history_alerts.insert(0, "msgid" + str(msg_obj.id))
                     history_alerts.insert(0, alert)
                     if digest:
                         history_alerts.insert(0, alert_digest)
                         alert = alert_digest
-                    result += "\n" + alert + "@" + msg_obj.date.astimezone(tz=datetime.timezone(datetime.timedelta(hours=8))).strftime("%Y-%m-%d %H:%M:%S") + " UTC+8"
+                    date_toutc8 = msg_obj.date.astimezone(tz=datetime.timezone(datetime.timedelta(hours=8)))
+                    result += "\n" + alert
+
+                    has_url = False
+                    for entity in msg_obj.entities:
+                        if type(entity) == telethon.tl.types.MessageEntityTextUrl:
+                            result += "\n - " + entity.url
+                            has_url = True
+
+                    if has_url:
+                        result += "\n"
+                    result += "@" + date_toutc8.strftime("%Y-%m-%d %H:%M:%S") + date_toutc8.tzname()
                     count += 1
 
+            history_alerts = history_alerts[:(39 if len(history_alerts) > 40 else len(history_alerts))] + [history_alerts[-1]]
             db.set_variable(util.get_identity(context, const.GROUP), history_var_name, json.dumps(history_alerts))
 
             # await log.warning("%d %d %d %d", count, messages[0].id, messages[1].id, history_alerts[-1])
@@ -137,6 +154,9 @@ class PneumoniaBotModule(bot_module.BotModule):
     @classmethod
     async def all_state_intercept(cls, bot, context, msg, input_vars, update_vars, extras, **kwargs):
         if u'疫情' in msg and u'提醒' in msg:
+            if u'立即' in msg:
+                await cls.check_alert_update_tg("pneunomia_alert_tg/%s" % (util.get_identity(context, const.GROUP)), util.global_bot, context, False)
+                return True
 
             if u'取消' in msg:
                 if u'telegram' in msg.lower():
@@ -222,15 +242,28 @@ class PneumoniaBotModule(bot_module.BotModule):
             total_data = json.loads(total_data)
 
             remarks = []
+            notes = []
             for i in range(5):
-                remark = total_data["remark" + str(i + 1)].strip()
+                remark = total_data.get("remark" + str(i + 1), "").strip()
                 if remark != "":
                     remarks.append(remark)
 
-            remarks = "\n".join(remarks)
-            total_data["remarks"] = remarks
+            for i in range(5):
+                note = total_data.get("note" + str(i + 1), "").strip()
+                if note != "":
+                    notes.append(note)
 
-            result += "总计%(countRemark)s\n\n%(virus)s\n感染源：%(infectSource)s\n传播方式：%(passWay)s\n%(remarks)s" % total_data
+            remarks = "\n".join(remarks)
+            notes = "\n".join(notes)
+            total_data["remarks"] = remarks
+            total_data["notes"] = notes
+            total_data["confirmedIncr"] = total_data.get("confirmedIncr", "???")
+            total_data["suspectedIncr"] = total_data.get("suspectedIncr", "???")
+            total_data["seriousIncr"] = total_data.get("seriousIncr", "???")
+            total_data["curedIncr"] = total_data.get("curedIncr", "???")
+            total_data["deadIncr"] = total_data.get("deadIncr", "???")
+
+            result += "总计全国确诊 %(confirmedCount)s 例（较昨日+%(confirmedIncr)s），疑似 %(suspectedCount)s 例（较昨日+%(suspectedIncr)s），重症 %(seriousCount)s 例（较昨日+%(seriousIncr)s），治愈 %(curedCount)s 例（较昨日+%(curedIncr)s），死亡 %(deadCount)s 例（较昨日+%(deadIncr)s）\n\n%(notes)s\n%(remarks)s" % total_data
 
             result += "\n"
 
@@ -239,14 +272,23 @@ class PneumoniaBotModule(bot_module.BotModule):
 
             await bot.send(context, Message(result))
 
-            data = await util.http_get("https://news.sina.cn/zt_d/yiqing0121")
+            # data = await util.http_get("https://news.sina.cn/zt_d/yiqing0121")
 
-            sina_data = REGEX_SINA_EXTRACT_JSON.search(data).group("json")
-            sina_data = json.loads(sina_data)
+            # sina_data = REGEX_SINA_EXTRACT_JSON.search(data).group("json")
+            # sina_data = json.loads(sina_data)
 
-            pic_data_url = sina_data["data"]["apiRes"]["data"]["components"][0]["data"][0]["pic"]
+            # pic_data_url = sina_data["data"]["apiRes"]["data"]["components"][0]["data"][0]["pic"]
 
-            await bot.send(context, MessageSegment(MessageSegment(type_='image', data={'file': pic_data_url})))
+            # await bot.send(context, MessageSegment(MessageSegment(type_='image', data={'file': pic_data_url})))
+
+            # pic_data_url = total_data["imgUrl"]
+
+            # await bot.send(context, MessageSegment(MessageSegment(type_='image', data={'file': pic_data_url})))
+
+            pic_data = total_data["quanguoTrendChart"]
+
+            for pic_data_obj in pic_data:
+                await bot.send(context, Message(pic_data_obj["title"]) + MessageSegment(type_='image', data={'file': pic_data_obj["imgUrl"]}))
 
             return True
 
