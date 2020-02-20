@@ -138,7 +138,7 @@ class PneumoniaBotModule(bot_module.BotModule):
                     result += "@" + date_toutc8.strftime("%Y-%m-%d %H:%M:%S") + " " + date_toutc8.tzname()
                     count += 1
 
-            history_alerts = history_alerts[:(39 if len(history_alerts) > 40 else len(history_alerts))] + [history_alerts[-1]]
+            history_alerts = history_alerts[:(99 if len(history_alerts) > 100 else len(history_alerts) - 1)] + [history_alerts[-1]]
             db.set_variable(util.get_identity(context, const.GROUP), history_var_name, json.dumps(history_alerts))
 
             # await log.warning("%d %d %d %d", count, messages[0].id, messages[1].id, history_alerts[-1])

@@ -78,7 +78,10 @@ class WeatherBotModule(bot_module.BotModule):
                 "Referer": "http://www.gpsspg.com"
             }, timeout_secs=3)
             # await log.info(data)
-            data = json.loads(data)
+            try:
+                data = json.loads(data)
+            except json.decoder.JSONDecodeError:
+                data = {}
             if not "result" in data:
                 return None
                 
