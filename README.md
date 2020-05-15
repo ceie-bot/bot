@@ -24,7 +24,7 @@ Works with CoolQ and its HTTP Plugin.
 
 酷Q是一款 Windows 软件，它模拟了腾讯 QQ 安卓端的通讯协议，让它可以作为一个可编程的 QQ 客户端。酷Q可以安装一些插件，拓展它的功能。我们主要用到酷Q的 HTTP 插件。
 
-酷Q可以在 Windows 平台上直接运行。而在 Linux 系统上，则需要安装一个名叫 Wine 的兼容层（https://www.winehq.org/）来让 .exe 的可执行文件运行起来。为方便部署，使用 Docker 镜像将酷Q、 Wine 和方便用户进行可视化操作的虚拟桌面服务 NoVNC 合并在一起，使用简单的 `docker run` 命令就可以让酷Q在 Linux 系统上跑起来。
+酷Q可以在 Windows 平台上直接运行。而在 Linux 系统上，则需要安装一个名叫 Wine 的兼容层（https://www.winehq.org/ ）来让 .exe 的可执行文件运行起来。为方便部署，使用 Docker 镜像将酷Q、 Wine 和方便用户进行可视化操作的虚拟桌面服务 NoVNC 合并在一起，使用简单的 `docker run` 命令就可以让酷Q在 Linux 系统上跑起来。
 
 运行方法请查看上述链接中的安装和运行说明。
 
