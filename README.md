@@ -459,7 +459,7 @@ update_vars["hello_username", const.INDIVIDUAL] = "张三"
 
 #### 4.2.4 `BotModule` 派生类
 
-每一个模块内含唯一的继承了 `bot.bot_module.BotModule` 的类。我们不会创建这个类的实例；这个类里面的所有函数都是静态函数。因此这里的类只是一个使代码有条理的作用。
+每一个模块内含唯一的继承了 `bot.bot_module.BotModule` 的类。我们不会创建这个类的实例；这个类里面的所有函数都是静态函数。因此这里的类只是起一个使代码有条理的作用。
 
 这个类里面的方法大多充当拦截器函数；同时类还有如下静态函数，参见 `./bot/bot_module.py`：
 
