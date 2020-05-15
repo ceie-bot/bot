@@ -50,7 +50,7 @@ def load_modules():
         default_module["idle_priority"] += 5
         default_module["all_state_priority"] += 5
 
-        clazz: BotModule = importlib.import_module(".modules." + effective_module["name"], package="mybot").module_class
+        clazz: BotModule = importlib.import_module(".modules." + effective_module["name"], package="bot").module_class
 
         # TODO: async?
         util.block_await(clazz.on_init())

@@ -1,6 +1,7 @@
 ENV
 backup
 .env
+venv/
 **/*.db
 **/*.session
 **/*.session-journal

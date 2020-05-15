@@ -1,4 +1,4 @@
-aiocqhttp
+aiohttp
 aiofiles
 aiocqhttp
 APScheduler
@@ -7,5 +7,5 @@ lxml
 sqlalchemy
 telethon
 urllib3
-yaml
+pyyaml
 pysocks

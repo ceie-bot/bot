@@ -1,3 +1,3 @@
-import mybot
+import bot
 
-mybot.framework.main()
+bot.framework.main()

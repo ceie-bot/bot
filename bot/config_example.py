@@ -12,7 +12,7 @@ DB_SQLITE_JOB_FILE = os.path.join(DB_SQLITE_DIR, "jobs.db")
 
 MODULES = [
     {
-        "name": "prpr",
+        "name": "hello",
         "prior_priority": 3000,
         "state_priority": 3000,
         "idle_priority": 3000,

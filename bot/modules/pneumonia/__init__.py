@@ -21,7 +21,6 @@ from ...bot_module import Interceptor, InputVarAttribute
 from ... import const
 from ... import util
 from ... import db
-from .. import setu
 
 
 REGEX_NEWS_EXTRACT_JSON = re.compile(r'try\s*\{\s*window\.getTimelineService\s*\=\s*(?P<json>[^\<]*)\}\s*catch\s*\(\s*e\s*\)\s*\{\s*\}')
@@ -92,7 +91,7 @@ class PneumoniaBotModule(bot_module.BotModule):
     @classmethod
     async def check_alert_update_tg(cls, job_id, bot, context, digest=False):
         try:
-            client = setu.client
+            client = None # TODO: 需要建立一个 telethon 的 client
             await client.connect()
             messages = (await client(functions.messages.GetHistoryRequest(peer="nCoV2019", offset_id=0, offset_date=0, add_offset=0, limit=10, max_id=0, min_id=0, hash=0))).messages
 
