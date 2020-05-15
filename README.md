@@ -7,11 +7,11 @@ Works with CoolQ and its HTTP Plugin.
 
 当不需要让酷Q在 Docker 容器中运行时（比如 Windows 系统上）：
 
-![CEIEBot 架构（无 Docker）](res/ceiebot-framework.svg)
+![CEIEBot 架构（无 Docker）](res/ceiebot-framework.png)
 
 当需要让酷Q在 Docker 容器中运行时（比如类 UNIX 系统上）：
 
-![CEIEBot 架构（Docker）](res/ceiebot-framework-with-docker.svg)
+![CEIEBot 架构（Docker）](res/ceiebot-framework-with-docker.png)
 
 接下来对各个部分进行介绍。
 
