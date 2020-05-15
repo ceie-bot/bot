@@ -4,6 +4,31 @@ A simple stateful QQ bot framework based on [python-aiocqhttp](https://github.co
 
 Works with CoolQ and its HTTP Plugin.
 
+- [CEIE-Bot](#ceie-bot)
+  - [1 原理介绍](#1-%e5%8e%9f%e7%90%86%e4%bb%8b%e7%bb%8d)
+    - [1.1 酷Q](#11-%e9%85%b7q)
+    - [1.2 酷Q HTTP 插件](#12-%e9%85%b7q-http-%e6%8f%92%e4%bb%b6)
+      - [1.2.1 配置项](#121-%e9%85%8d%e7%bd%ae%e9%a1%b9)
+    - [1.3 Python 异步 HTTP 服务器](#13-python-%e5%bc%82%e6%ad%a5-http-%e6%9c%8d%e5%8a%a1%e5%99%a8)
+    - [1.4 Python 异步 HTTP 服务器的内部逻辑](#14-python-%e5%bc%82%e6%ad%a5-http-%e6%9c%8d%e5%8a%a1%e5%99%a8%e7%9a%84%e5%86%85%e9%83%a8%e9%80%bb%e8%be%91)
+  - [2 安装](#2-%e5%ae%89%e8%a3%85)
+    - [2.1 确认 Python 版本及环境](#21-%e7%a1%ae%e8%ae%a4-python-%e7%89%88%e6%9c%ac%e5%8f%8a%e7%8e%af%e5%a2%83)
+    - [2.2 克隆 git 仓库，在仓库内创建 Python 虚拟环境（venv）](#22-%e5%85%8b%e9%9a%86-git-%e4%bb%93%e5%ba%93%e5%9c%a8%e4%bb%93%e5%ba%93%e5%86%85%e5%88%9b%e5%bb%ba-python-%e8%99%9a%e6%8b%9f%e7%8e%af%e5%a2%83venv)
+    - [2.3 在虚拟环境中安装 pip 依赖](#23-%e5%9c%a8%e8%99%9a%e6%8b%9f%e7%8e%af%e5%a2%83%e4%b8%ad%e5%ae%89%e8%a3%85-pip-%e4%be%9d%e8%b5%96)
+    - [2.4 安装酷Q](#24-%e5%ae%89%e8%a3%85%e9%85%b7q)
+  - [3. 使用](#3-%e4%bd%bf%e7%94%a8)
+    - [3.1 开启酷Q](#31-%e5%bc%80%e5%90%af%e9%85%b7q)
+    - [3.2 开启 Python HTTP 服务器](#32-%e5%bc%80%e5%90%af-python-http-%e6%9c%8d%e5%8a%a1%e5%99%a8)
+      - [3.2.1 创建配置](#321-%e5%88%9b%e5%bb%ba%e9%85%8d%e7%bd%ae)
+  - [4. 编码](#4-%e7%bc%96%e7%a0%81)
+    - [4.1 工程结构](#41-%e5%b7%a5%e7%a8%8b%e7%bb%93%e6%9e%84)
+    - [4.2 编码中的重点概念](#42-%e7%bc%96%e7%a0%81%e4%b8%ad%e7%9a%84%e9%87%8d%e7%82%b9%e6%a6%82%e5%bf%b5)
+      - [4.2.1 拦截器](#421-%e6%8b%a6%e6%88%aa%e5%99%a8)
+      - [4.2.2 用户变量](#422-%e7%94%a8%e6%88%b7%e5%8f%98%e9%87%8f)
+      - [4.2.3 状态](#423-%e7%8a%b6%e6%80%81)
+      - [4.2.4 `BotModule` 派生类](#424-botmodule-%e6%b4%be%e7%94%9f%e7%b1%bb)
+    - [4.3 具体实践](#43-%e5%85%b7%e4%bd%93%e5%ae%9e%e8%b7%b5)
+
 ## 1 原理介绍
 
 当不需要让酷Q在 Docker 容器中运行时（比如 Windows 系统上）：
