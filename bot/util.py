@@ -228,3 +228,10 @@ def get_jobs(*args, **kwargs):
         del kwargs["prefix_job_id"]
 
     return [job for job in scheduler.get_jobs(*args, **kwargs) if job.id.startswith(prefix)]
+
+def append_return(_return, string, delim):
+    return {
+        "reply": string,    
+    } if _return == None else {
+        "reply": _return["reply"] + delim + string,    
+    }

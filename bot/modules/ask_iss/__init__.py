@@ -21,6 +21,8 @@ from ...bot_module import Interceptor, InputVarAttribute
 from ... import const
 from ... import util
 
+HELP_MESSAGE = "空间站模块帮助：请说“查询空间站信息”"
+
 class AskIssModule(bot_module.BotModule):
     @classmethod
     async def on_init(cls):
@@ -29,6 +31,10 @@ class AskIssModule(bot_module.BotModule):
     # 这里我们定义一个方法名为 ask_intercept，用来拦截 idle 状态下用户的询问消息
     @classmethod
     async def ask_intercept(cls, bot, context, msg, input_vars, update_vars, extras, **kwargs):
+        if msg == "帮助":
+            extras["_return"] = util.append_return(extras.get("_return", None), HELP_MESSAGE, "\n\n")
+            return False
+
         # 我们会在这里拦截“查询空间站信息”这句话
         # 一般我们用 msg 就够了
         # 你也可以用 extras["_msg_strip"] 得到这句话切除前后空白字符后的字符串

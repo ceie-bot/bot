@@ -18,12 +18,19 @@ import datetime
 from ... import log
 from ... import bot_module
 from ...bot_module import Interceptor, InputVarAttribute
+from .. import telegram
 from ... import const
 from ... import util
 from ... import db
 
+HELP_MESSAGE = "疫情模块帮助："
+HELP_MESSAGE += "\n疫情：全国疫情统计信息 + 疫情新闻播报"
+HELP_MESSAGE += "\n疫情新闻：订阅疫情新闻（丁香园源）"
+HELP_MESSAGE += "\n取消疫情新闻：取消订阅疫情新闻（丁香园源）"
+HELP_MESSAGE += "\n疫情新闻 Telegram：订阅疫情新闻（Telegram 源）"
+HELP_MESSAGE += "\n取消疫情新闻 Telegram：取消订阅疫情新闻（Telegram 源）"
 
-REGEX_NEWS_EXTRACT_JSON = re.compile(r'try\s*\{\s*window\.getTimelineService\s*\=\s*(?P<json>[^\<]*)\}\s*catch\s*\(\s*e\s*\)\s*\{\s*\}')
+REGEX_NEWS_EXTRACT_JSON = re.compile(r'try\s*\{\s*window\.getTimelineService1\s*\=\s*(?P<json>[^\<]*)\}\s*catch\s*\(\s*e\s*\)\s*\{\s*\}')
 REGEX_BYREGION_EXTRACT_JSON = re.compile(r'try\s*\{\s*window\.getAreaStat\s*\=\s*(?P<json>[^\<]*)\}\s*catch\s*\(\s*e\s*\)\s*\{\s*\}')
 REGEX_TOTAL_EXTRACT_JSON = re.compile(r'try\s*\{\s*window\.getStatisticsService\s*\=\s*(?P<json>[^\<]*)\}\s*catch\s*\(\s*e\s*\)\s*\{\s*\}')
 REGEX_SINA_EXTRACT_JSON = re.compile(r'window\.SM\s*=\s*(?P<json>[^\n\;]*)\;?\n')
@@ -31,12 +38,13 @@ REGEX_SINA_EXTRACT_JSON = re.compile(r'window\.SM\s*=\s*(?P<json>[^\n\;]*)\;?\n'
 class PneumoniaBotModule(bot_module.BotModule):
     @classmethod
     async def on_init(cls):
-        pass
+        if telegram.client is None:
+            raise RuntimeError("telegram module not initialized")
 
     @classmethod
     def news_obj_to_str(cls, obj):
         return "%s@%s：%s\n%s\n\nfrom%s %s" % (
-            datetime.datetime.fromtimestamp(obj["modifyTime"] / 1000, tz=datetime.timezone(datetime.timedelta(hours=8))).strftime("%Y-%m-%d %H:%M:%S"),
+            datetime.datetime.fromtimestamp(obj["pubDate"] / 1000, tz=datetime.timezone(datetime.timedelta(hours=8))).strftime("%Y-%m-%d %H:%M:%S"),
             obj["provinceName"],
             obj["title"],
             obj["summary"],
@@ -47,7 +55,7 @@ class PneumoniaBotModule(bot_module.BotModule):
     @classmethod
     async def check_alert_update(cls, job_id, bot, context):
         try:
-            data = await util.http_get("https://3g.dxy.cn/newh5/view/pneumonia", timeout_secs=3)
+            data = await util.http_get("https://ncov.dxy.cn/ncovh5/view/pneumonia", timeout_secs=3)
             data = REGEX_NEWS_EXTRACT_JSON.search(data).group("json")
             data = json.loads(data)
 
@@ -91,7 +99,7 @@ class PneumoniaBotModule(bot_module.BotModule):
     @classmethod
     async def check_alert_update_tg(cls, job_id, bot, context, digest=False):
         try:
-            client = None # TODO: 需要建立一个 telethon 的 client
+            client = telegram.client
             await client.connect()
             messages = (await client(functions.messages.GetHistoryRequest(peer="nCoV2019", offset_id=0, offset_date=0, add_offset=0, limit=10, max_id=0, min_id=0, hash=0))).messages
 
@@ -154,7 +162,11 @@ class PneumoniaBotModule(bot_module.BotModule):
 
     @classmethod
     async def all_state_intercept(cls, bot, context, msg, input_vars, update_vars, extras, **kwargs):
-        if u'疫情' in msg and u'提醒' in msg:
+        if msg == "帮助":
+            extras["_return"] = util.append_return(extras.get("_return", None), HELP_MESSAGE, "\n\n")
+            return False
+
+        if u'疫情' in msg and u'新闻' in msg:
             if u'立即' in msg:
                 await cls.check_alert_update_tg("pneunomia_alert_tg/%s" % (util.get_identity(context, const.GROUP)), util.global_bot, context, False)
                 return True
@@ -217,7 +229,7 @@ class PneumoniaBotModule(bot_module.BotModule):
                     return True
 
         elif u'疫情' == msg.strip():
-            data = await util.http_get("https://3g.dxy.cn/newh5/view/pneumonia")
+            data = await util.http_get("https://ncov.dxy.cn/ncovh5/view/pneumonia")
             byregion_data = REGEX_BYREGION_EXTRACT_JSON.search(data).group("json")
             byregion_data = json.loads(byregion_data)
 
@@ -258,38 +270,41 @@ class PneumoniaBotModule(bot_module.BotModule):
             notes = "\n".join(notes)
             total_data["remarks"] = remarks
             total_data["notes"] = notes
+            total_data["currentConfirmedIncr"] = total_data.get("currentConfirmedIncr", "???")
             total_data["confirmedIncr"] = total_data.get("confirmedIncr", "???")
             total_data["suspectedIncr"] = total_data.get("suspectedIncr", "???")
             total_data["seriousIncr"] = total_data.get("seriousIncr", "???")
             total_data["curedIncr"] = total_data.get("curedIncr", "???")
             total_data["deadIncr"] = total_data.get("deadIncr", "???")
 
-            result += "总计全国确诊 %(confirmedCount)s 例（较昨日+%(confirmedIncr)s），疑似 %(suspectedCount)s 例（较昨日+%(suspectedIncr)s），重症 %(seriousCount)s 例（较昨日+%(seriousIncr)s），治愈 %(curedCount)s 例（较昨日+%(curedIncr)s），死亡 %(deadCount)s 例（较昨日+%(deadIncr)s）\n\n%(notes)s\n%(remarks)s" % total_data
+            result += "总计全国现存确诊 %(currentConfirmedCount)s 例（较昨日+%(currentConfirmedIncr)s），累计确诊 %(confirmedCount)s 例（较昨日+%(confirmedIncr)s），疑似 %(suspectedCount)s 例（较昨日+%(suspectedIncr)s），重症 %(seriousCount)s 例（较昨日+%(seriousIncr)s），治愈 %(curedCount)s 例（较昨日+%(curedIncr)s），死亡 %(deadCount)s 例（较昨日+%(deadIncr)s）\n\n%(notes)s\n%(remarks)s" % total_data
 
             result += "\n"
 
             for i, news_obj in enumerate(news_data[0:5]):
-                result += "\n" + ("%d. " % (i+1)) + datetime.datetime.fromtimestamp(news_obj["modifyTime"] / 1000, tz=datetime.timezone(datetime.timedelta(hours=8))).strftime("%Y-%m-%d %H:%M:%S") + " - " + news_obj["title"]
+                result += "\n" + ("%d. " % (i+1)) + datetime.datetime.fromtimestamp(news_obj["pubDate"] / 1000, tz=datetime.timezone(datetime.timedelta(hours=8))).strftime("%Y-%m-%d %H:%M:%S") + " - " + news_obj["title"]
 
             await bot.send(context, Message(result))
 
-            # data = await util.http_get("https://news.sina.cn/zt_d/yiqing0121")
+            if False: # charts: sina source: unavailable now
+                data = await util.http_get("https://news.sina.cn/zt_d/yiqing0121")
 
-            # sina_data = REGEX_SINA_EXTRACT_JSON.search(data).group("json")
-            # sina_data = json.loads(sina_data)
+                sina_data = REGEX_SINA_EXTRACT_JSON.search(data).group("json")
+                sina_data = json.loads(sina_data)
 
-            # pic_data_url = sina_data["data"]["apiRes"]["data"]["components"][0]["data"][0]["pic"]
+                pic_data_url = sina_data["data"]["apiRes"]["data"]["components"][0]["data"][0]["pic"]
 
-            # await bot.send(context, MessageSegment(MessageSegment(type_='image', data={'file': pic_data_url})))
+                await bot.send(context, MessageSegment(MessageSegment(type_='image', data={'file': pic_data_url})))
 
-            # pic_data_url = total_data["imgUrl"]
+                pic_data_url = total_data["imgUrl"]
 
-            # await bot.send(context, MessageSegment(MessageSegment(type_='image', data={'file': pic_data_url})))
+                await bot.send(context, MessageSegment(MessageSegment(type_='image', data={'file': pic_data_url})))
 
-            pic_data = total_data["quanguoTrendChart"]
+            if False: # charts: dxy source: unavailable now
+                pic_data = total_data["quanguoTrendChart"]
 
-            for pic_data_obj in pic_data:
-                await bot.send(context, Message(pic_data_obj["title"]) + MessageSegment(type_='image', data={'file': pic_data_obj["imgUrl"]}))
+                for pic_data_obj in pic_data:
+                    await bot.send(context, Message(pic_data_obj["title"]) + MessageSegment(type_='image', data={'file': pic_data_obj["imgUrl"]}))
 
             return True
 

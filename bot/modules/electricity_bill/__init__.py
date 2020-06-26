@@ -26,6 +26,14 @@ except ImportError:
 
 REGEX_TIME = re.compile(r'^(?P<hour>\d\d):(?P<minute>\d\d)$')
 
+HELP_MESSAGE = "电费模块帮助："
+HELP_MESSAGE += "\n查询电费：查询电费"
+HELP_MESSAGE += "\n查询电费 个人限定：查询电费，但只为你自己（而非群）记录房间号"
+HELP_MESSAGE += "\n电费：当记录了房间号，可以快速查询该房间号的电费"
+HELP_MESSAGE += "\n电费 7 322：查询某个房间的电费，接口由 ddbot 提供"
+HELP_MESSAGE += "\n删除电费房间数据：删除电费房间数据"
+HELP_MESSAGE += "\n定时电费 08:30 7 322：每天固定时段查询电费，接口由 ddbot 提供"
+
 class ElectricityBillBotModule(bot_module.BotModule):
     @classmethod
     async def before_campus(cls, bot, context, msg, input_vars, update_vars, extras, **kwargs):
@@ -355,6 +363,10 @@ class ElectricityBillBotModule(bot_module.BotModule):
 
     @classmethod
     async def intercept_powerbill(cls, bot, context, msg, input_vars, update_vars, extras, **kwargs):
+        if msg == "帮助":
+            extras["_return"] = util.append_return(extras.get("_return", None), HELP_MESSAGE, "\n\n")
+            return False
+            
         prefix = kwargs["prefix"]
         var_scope = kwargs["var_scope"]
 

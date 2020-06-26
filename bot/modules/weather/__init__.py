@@ -18,6 +18,13 @@ try:
 except ImportError:
     from . import config_example as priv_config
 
+HELP_MESSAGE = "天气模块帮助："
+HELP_MESSAGE += "\n查询同济大学嘉定校区天气：查询同济大学嘉定校区天气"
+HELP_MESSAGE += "\n定时天气 上海 08:30：每天 8:30 报告上海天气"
+HELP_MESSAGE += "\n取消定时天气：取消所有定时天气"
+HELP_MESSAGE += "\n上海市天气预警：开启上海市天气预警"
+HELP_MESSAGE += "\n取消天气预警：取消所有天气预警"
+
 WEATHER_DICT = {
     "CLEAR_DAY": "晴",
     "CLEAR_NIGHT": "晴",
@@ -62,7 +69,7 @@ class WeatherBotModule(bot_module.BotModule):
         return WIND_LIST[int((degree + 22.5) % 360 / 45)]
 
     @classmethod
-    async def get_location_from_msg(cls, msg) -> typing.Dict:
+    async def get_location_from_msg(cls, msg, extras: typing.Dict) -> typing.Dict:
         m = re.fullmatch(REGEX_LNG_LAT, msg)
         if m:
             return {
@@ -71,24 +78,32 @@ class WeatherBotModule(bot_module.BotModule):
                 "lat": float(m.group("lat")),
             }
         else:
-            data = await util.http_get("https://apis.map.qq.com/ws/geocoder/v1/", params={
-                "address": msg,
-                "key": "FBOBZ-VODWU-C7SVF-B2BDI-UK3JE-YBFUS"
+            data = await util.http_get("https://apis.map.qq.com/ws/place/v1/suggestion", params={
+                "keyword": msg,
+                "key": "K76BZ-W3O2Q-RFL5S-GXOPR-3ARIT-6KFE5",
             }, headers={
-                "Referer": "http://www.gpsspg.com"
-            }, timeout_secs=3)
-            # await log.info(data)
+                "Referer": "https://lbs.qq.com/tool/getpoint/getpoint.html",
+            }, timeout_secs=15)
+
+            await log.info("get_location_from_msg result: " + data)
+
             try:
                 data = json.loads(data)
             except json.decoder.JSONDecodeError:
                 data = {}
-            if not "result" in data:
+
+            if not "data" in data:
+                extras["_error"] = data.get("message", "未知错误")
+                return None
+
+            if len(data["data"]) == 0:
+                extras["_error"] = "找不到此地址"
                 return None
                 
             return {
-                "name": data["result"]["title"],
-                "lng": data["result"]["location"]["lng"],
-                "lat": data["result"]["location"]["lat"],
+                "name": data["data"][0]["title"],
+                "lng": data["data"][0]["location"]["lng"],
+                "lat": data["data"][0]["location"]["lat"],
             }
 
 
@@ -190,6 +205,10 @@ class WeatherBotModule(bot_module.BotModule):
 
     @classmethod
     async def query_weather(cls, bot, context, msg, input_vars, update_vars, extras, **kwargs):
+        if msg == "帮助":
+            extras["_return"] = util.append_return(extras.get("_return", None), HELP_MESSAGE, "\n\n")
+            return False
+
         if u'天气' in msg and (u'查询' in msg or (u'怎' in msg)):
             msg = msg.replace("天气", "")
             msg = msg.replace(" ", "")
@@ -205,9 +224,9 @@ class WeatherBotModule(bot_module.BotModule):
 
             location = json.loads(input_vars["weather_location"])
             if msg != "":
-                location = await cls.get_location_from_msg(msg)
+                location = await cls.get_location_from_msg(msg, extras)
                 if location is None:
-                    await bot.send(context, "获取地理位置无结果")
+                    await bot.send(context, "获取地理位置无结果：" + extras["_error"])
                     return True
 
                 update_vars["weather_location", const.GROUP] = json.dumps(location)
@@ -257,10 +276,10 @@ class WeatherBotModule(bot_module.BotModule):
                     await bot.send(context, "用法示范：定时天气 上海 08:30")
                     return True
                 
-                location = await cls.get_location_from_msg(location_msg)
+                location = await cls.get_location_from_msg(location_msg, extras)
 
                 if location is None:
-                    await bot.send(context, "获取地理位置无结果")
+                    await bot.send(context, "获取地理位置无结果：" + extras["_error"])
                     return True
 
                 jobcall = util.make_jobcall(cls.real_query_and_send, context, location)
@@ -305,10 +324,10 @@ class WeatherBotModule(bot_module.BotModule):
 
                 location_msg = msg
                 
-                location = await cls.get_location_from_msg(location_msg)
+                location = await cls.get_location_from_msg(location_msg, extras)
 
                 if location is None:
-                    await bot.send(context, "获取地理位置无结果")
+                    await bot.send(context, "获取地理位置无结果：" + extras["_error"])
                     return True
 
                 jobcall = util.make_jobcall(cls.check_alert_update, context, location)
@@ -332,8 +351,8 @@ class WeatherBotModule(bot_module.BotModule):
             Interceptor(base_priority, cls.query_weather, const.TYPE_RULE_MSG_ONLY, {
                 "weather_location": InputVarAttribute(json.dumps(priv_config.DEFAULT_LOCATION), const.GROUP)
             }, {}, None),
-            Interceptor(base_priority, cls.add_weather_job, const.TYPE_RULE_MSG_ONLY, {}, {}, None),
-            Interceptor(base_priority, cls.add_alert_job, const.TYPE_RULE_MSG_ONLY, {}, {}, None),
+            Interceptor(base_priority + 1, cls.add_weather_job, const.TYPE_RULE_MSG_ONLY, {}, {}, None),
+            Interceptor(base_priority + 2, cls.add_alert_job, const.TYPE_RULE_MSG_ONLY, {}, {}, None),
         ]
 
 module_class = WeatherBotModule

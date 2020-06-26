@@ -16,10 +16,16 @@ try:
 except ImportError:
     from . import config_example as priv_config
 
+HELP_MESSAGE = r"命令模块帮助：\resetstatus 重置当前状态为 idle；\showstatus 显示当前状态；"
+
 class CommandsBotModule(bot_module.BotModule):
 
     @classmethod
     async def prior_intercept(cls, bot, context, msg, input_vars, update_vars, extras, **kwargs):
+        if msg == "帮助":
+            extras["_return"] = util.append_return(extras.get("_return", None), HELP_MESSAGE, "\n\n")
+            return False
+
         msg_strip = extras["_msg_strip"].lower()
         msg = msg.replace("&#91;", "[").replace("&#93;", "]")
 
