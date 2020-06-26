@@ -1,1 +1,0 @@
-HATED_PEOPLE = ["10000"] # the qq id of those who will not be prpr-ed
