@@ -24,11 +24,12 @@ from ... import util
 from ... import db
 
 HELP_MESSAGE = "疫情模块帮助："
-HELP_MESSAGE += "\n疫情：全国疫情统计信息 + 疫情新闻播报"
-HELP_MESSAGE += "\n疫情新闻：订阅疫情新闻（丁香园源）"
-HELP_MESSAGE += "\n取消疫情新闻：取消订阅疫情新闻（丁香园源）"
-HELP_MESSAGE += "\n疫情新闻 Telegram：订阅疫情新闻（Telegram 源）"
-HELP_MESSAGE += "\n取消疫情新闻 Telegram：取消订阅疫情新闻（Telegram 源）"
+HELP_MESSAGE += "\n疫情：全国疫情统计信息 + 疫情动态播报"
+HELP_MESSAGE += "\n疫情动态：订阅疫情动态（丁香园源）"
+HELP_MESSAGE += "\n取消疫情动态：取消订阅疫情动态（丁香园源）"
+HELP_MESSAGE += "\n疫情动态 Telegram：订阅疫情动态（Telegram 源）"
+HELP_MESSAGE += "\n疫情动态 Telegram 摘要：订阅疫情动态（Telegram 源摘要）"
+HELP_MESSAGE += "\n取消疫情动态 Telegram：取消订阅疫情动态（Telegram 源）"
 
 REGEX_NEWS_EXTRACT_JSON = re.compile(r'try\s*\{\s*window\.getTimelineService1\s*\=\s*(?P<json>[^\<]*)\}\s*catch\s*\(\s*e\s*\)\s*\{\s*\}')
 REGEX_BYREGION_EXTRACT_JSON = re.compile(r'try\s*\{\s*window\.getAreaStat\s*\=\s*(?P<json>[^\<]*)\}\s*catch\s*\(\s*e\s*\)\s*\{\s*\}')
@@ -43,9 +44,8 @@ class PneumoniaBotModule(bot_module.BotModule):
 
     @classmethod
     def news_obj_to_str(cls, obj):
-        return "%s@%s：%s\n%s\n\nfrom%s %s" % (
+        return "%s：%s\n%s\n\nfrom%s %s" % (
             datetime.datetime.fromtimestamp(obj["pubDate"] / 1000, tz=datetime.timezone(datetime.timedelta(hours=8))).strftime("%Y-%m-%d %H:%M:%S"),
-            obj["provinceName"],
             obj["title"],
             obj["summary"],
             obj["infoSource"],
@@ -61,11 +61,11 @@ class PneumoniaBotModule(bot_module.BotModule):
 
             history_var_name = "pneumonia_alerts_new2"
             
-            history_alerts = json.loads(db.get_variable(util.get_identity(context, const.GROUP), history_var_name, "[" + str(data['result'][0]["id"]) + "]"))
+            history_alerts = json.loads(db.get_variable(util.get_identity(context, const.GROUP), history_var_name, "[" + str(data[0]["id"]) + "]"))
 
             result = "有新的疫情动态"
             count = 0
-            for news_obj in data['result']:
+            for news_obj in data:
                 alert = cls.news_obj_to_str(news_obj)
                 alert_spoken = alert in history_alerts
                 alert_is_old = news_obj["id"] < history_alerts[-1]
@@ -79,6 +79,7 @@ class PneumoniaBotModule(bot_module.BotModule):
                     count += 1
 
             if count:
+                await log.info("sending: " + result)
                 await bot.send(context, result)
                 
             db.set_variable(util.get_identity(context, const.GROUP), history_var_name, json.dumps(history_alerts))
@@ -166,9 +167,9 @@ class PneumoniaBotModule(bot_module.BotModule):
             extras["_return"] = util.append_return(extras.get("_return", None), HELP_MESSAGE, "\n\n")
             return False
 
-        if u'疫情' in msg and u'新闻' in msg:
+        if u'疫情' in msg and u'动态' in msg:
             if u'立即' in msg:
-                await cls.check_alert_update_tg("pneunomia_alert_tg/%s" % (util.get_identity(context, const.GROUP)), util.global_bot, context, False)
+                await cls.check_alert_update("pneunomia_alert/%s" % (util.get_identity(context, const.GROUP)), util.global_bot, context)
                 return True
 
             if u'取消' in msg:
@@ -220,7 +221,7 @@ class PneumoniaBotModule(bot_module.BotModule):
                     job_id = "pneunomia_alert/%s" % (util.get_identity(context, const.GROUP))
                     
                     try:
-                        util.add_job(jobcall, trigger=IntervalTrigger(minutes=10), id=job_id)
+                        util.add_job(jobcall, trigger=IntervalTrigger(seconds=9), id=job_id)
                     except ConflictingIdError:
                         await bot.send(context, "设置开启疫情动态：失败：已有这个任务")
                         return True
