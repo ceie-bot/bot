@@ -16,7 +16,11 @@ def gen_log_level_method(name):
         inspect_stack_index = kwargs.get("inspect_stack_index", 2)
         if global_logger:
             msg = msg if isinstance(msg, str) else repr(msg)
-            msg = "[%s] %s" % (get_outside_method_name(inspect_stack_index), msg % args)
+            try:
+                msg_formatted = msg % args
+            except TypeError:
+                msg_formatted = msg
+            msg = "[%s] %s" % (get_outside_method_name(inspect_stack_index), msg_formatted)
             getattr(global_logger, name)(msg, **kwargs)
             
             if name in ["error", "critial", "fatal"]:

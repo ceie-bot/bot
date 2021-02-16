@@ -51,6 +51,15 @@ class CommandsBotModule(bot_module.BotModule):
             # 在这里我们手动构造了向酷Q HTTP API 的 HTTP 请求，而不是用 bot.send。这是因为信息的接收者和目前的聊天对方不一致，此外还因为我们需要拿到信息是否发送成功的返回结果（data）
             data = await util.http_post(const.API_URL_PREFIX + "/send_group_msg", json={"group_id": group_id, "message": real_msg, "auto_escape": False}, headers={"Content-Type": "application/json; charset=UTF-8"})
 
+            await bot.send(context, data)
+            return True
+
+        if msg.startswith(r'\sendfavg ') and str(util.get_identity(context, const.INDIVIDUAL)) in const.QQ_ADMINISTRATORS:
+            arr = msg.split(" ")
+            group_id = priv_config.FAV_GROUP
+            real_msg = ' '.join(arr[1:])
+            await log.info(r"\sendG " + str(group_id) + " " + real_msg)
+            data = await util.http_post(const.API_URL_PREFIX + "/send_group_msg", json={"group_id": group_id, "message": real_msg, "auto_escape": False}, headers={"Content-Type": "application/json; charset=UTF-8"})
 
             await bot.send(context, data)
             return True
